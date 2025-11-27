@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Mausventskalender — Weihnachtszauber</title>
+  <style>
+    :root{
+      --bg-1: #0f1724; /* dunkler Himmel */
+      --bg-2: #5fb0ff; /* heller Verlauf */
+      --panel-bg: rgba(255,255,255,0.92);
+      --accent: #7a4b2f;
+      --gold: #ffd580;
+      --card: rgba(255,255,255,0.06);
+      --max-width: 460px;
+      --glass: rgba(255,255,255,0.06);
+      --door-brown: #8B4513;
+      --door-gold: #FFD700;
+    }
+
+    /* --- Basis --- */
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;color:#0b1220}
+    body{background:radial-gradient(circle at 20% 10%, rgba(95,176,255,0.12), transparent 10%), linear-gradient(180deg,var(--bg-2), #eaf6ff 55%);display:flex;align-items:center;justify-content:center;padding:16px}
+
+    /* subtiles Textur-Overlay */
+    body::after{content:'';position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);background-size:12px 12px;opacity:.65;mix-blend-mode:overlay}
+
+    .phone-frame{width:100%;max-width:var(--max-width);height:94vh;border-radius:22px;overflow:hidden;box-shadow:0 20px 60px rgba(13,24,40,0.35);position:relative;background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));backdrop-filter: blur(6px)}
+
+    header{padding:14px 16px 6px;text-align:center;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent)}
+    header h1{margin:0;font-size:20px;letter-spacing:0.6px;color:#05203a}
+
+    main{padding:10px 12px 110px;min-height:60vh}
+
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:calc((100vw - 64px) / 4 * 1);gap:10px}
+
+    /* --- Tür-Button (realistischer) --- */
+    .door{position:relative;border-radius:8px;overflow:visible;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:8px;background:linear-gradient(145deg, var(--door-brown), #6b3710);border:2px solid #5a2d0b;box-shadow:0 6px 14px rgba(8,20,30,0.12), inset 0 1px 0 rgba(255,255,255,0.2);transition:transform .16s ease,box-shadow .18s ease}
+    .door:active{transform:translateY(3px) scale(.997)}
+
+    /* Türgriff */
+    .door-handle{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #FFD700, #B8860B);border:1px solid #8B4513;box-shadow:0 1px 3px rgba(0,0,0,0.5);}
+
+    /* Türnummer */
+    .door .num{position:absolute;left:8px;bottom:6px;font-weight:800;color:var(--gold);font-size:16px;text-shadow:0 1px 0 rgba(0,0,0,0.3)}
+
+    .door.opened{filter:grayscale(80%) brightness(.85);opacity:.82}
+
+    /* panel / unterseiten: jetzt mit gleichem winterlichen hintergrund + schneeflocken */
+    .panel{position:fixed;inset:0;z-index:60;padding:22px;display:flex;flex-direction:column;align-items:stretch;transform:translateY(110%);transition:transform .36s cubic-bezier(.2,.9,.18,1);background:radial-gradient(circle at 20% 10%, rgba(95,176,255,0.12), transparent 10%), linear-gradient(180deg,var(--bg-2), #eaf6ff 55%);}
+    .panel.show{transform:translateY(0)}
+    .panel-inner{max-width:640px;margin:0 auto;background:linear-gradient(180deg,var(--panel-bg), rgba(250,250,255,0.97));border-radius:16px;padding:18px;box-shadow:0 20px 60px rgba(8,20,30,0.24);position:relative}
+    .panel h2{text-align:center;margin:6px 0 10px}
+    .puzzle{min-height:240px;max-height:60vh;overflow:auto;padding:8px}
+
+    .btns{display:flex;gap:8px;justify-content:center;padding:12px}
+    button{appearance:none;border:0;padding:10px 14px;border-radius:10px;background:#2b8cff;color:white;font-weight:600}
+    .back{background:#666}
+
+    /* Schneeflocken layer (global und panel) */
+    .snow-wrap{position:absolute;inset:0;pointer-events:none;z-index:30;overflow:hidden}
+    .snowflake{position:absolute;top:-10vh;font-size:18px;user-select:none}
+
+    /* footer-hügel bleibt, aber dezenter */
+    .hill{position:absolute;left:0;right:0;bottom:0;height:110px;background:radial-gradient(circle at 50% 30%, #fff, #f3f6fb 60%);display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;z-index:40}
+    .snowman{width:110px;height:110px}
+
+    /* kleine utility */
+    .hint{font-size:13px;color:#42566a}
+    input[type='text']{padding:8px;border-radius:8px;border:1px solid #d0e6ff}
+
+    @media (max-width:360px){header h1{font-size:18px}.grid{gap:8px}}
+
+    /* crossword styles */
+    .cw{display:inline-block;padding:6px;background:linear-gradient(180deg,#fff,#f7fbff);border-radius:10px}
+    .cw-row{display:flex}
+    .cw-cell{width:36px;height:36px;border:1px solid #d6e7ff;display:flex;align-items:center;justify-content:center;position:relative}
+    .cw-cell input{width:100%;height:100%;border:0;background:transparent;text-align:center;font-weight:700;font-size:18px}
+    .cw-cell.block{background:#234;opacity:.08}
+
+    /* maze canvas */
+    #mazeCanvas{width:100%;height:360px;border-radius:10px;background:#fff}
+
+    /* Rätsel-Styles */
+    .riddle-container { padding: 10px; }
+    .riddle-question { font-weight: bold; margin-bottom: 10px; }
+    .riddle-answer { margin-top: 10px; }
+    .riddle-input { width: 100%; padding: 8px; margin: 10px 0; border-radius: 8px; border: 1px solid #d0e6ff; }
+    .riddle-check-btn { background: #2b8cff; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+    .riddle-result { margin-top: 10px; font-weight: bold; }
+    
+    /* Memory-Spiel */
+    .memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+    .memory-card { aspect-ratio: 1; background: #2b8cff; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer; transform-style: preserve-3d; transition: transform 0.5s; }
+    .memory-card.flipped { transform: rotateY(180deg); }
+    .memory-card .front, .memory-card .back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+    .memory-card .front { background: #2b8cff; }
+    .memory-card .back { background: white; color: #2b8cff; transform: rotateY(180deg); }
+    
+    /* Puzzle-Spiel */
+    .puzzle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin: 10px 0; }
+    .puzzle-piece { aspect-ratio: 1; background: #f0f0f0; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .puzzle-piece.empty { background: transparent; border: none; cursor: default; }
+    
+    /* Rechenrätsel */
+    .math-riddle { text-align: center; font-size: 18px; margin: 20px 0; }
+    .math-input { width: 60px; text-align: center; margin: 0 5px; }
+    
+    /* Wortsuchrätsel */
+    .word-search { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; margin: 10px 0; }
+    .word-search-cell { aspect-ratio: 1; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    .word-search-cell.selected { background: #ffd580; }
+    .word-search-words { margin-top: 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="phone-frame" role="application" aria-label="Mausventskalender">
+    <header>
+      <h1>Mausventskalender</h1>
+    </header>
+
+    <main>
+      <div class="grid" id="grid" aria-hidden="false"></div>
+    </main>
+
+    <!-- Schneeflocken-Layer global -->
+    <div class="snow-wrap" id="snow"></div>
+
+    <div class="hill" aria-hidden="true">
+      <svg class="snowman" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="1" stop-color="#e6eef9" stop-opacity="1"/>
+          </linearGradient>
+        </defs>
+        <g transform="translate(10,6)">
+          <circle cx="50" cy="78" r="28" fill="url(#g1)" stroke="#cfdff3"/>
+          <circle cx="50" cy="46" r="22" fill="url(#g1)" stroke="#cfdff3"/>
+          <circle cx="50" cy="24" r="14" fill="url(#g1)" stroke="#cfdff3"/>
+          <circle cx="45" cy="22" r="2" fill="#333"/>
+          <circle cx="55" cy="22" r="2" fill="#333"/>
+          <path d="M38 34 q6 6 24 0" stroke="#a84" stroke-width="2" fill="none"/>
+          <rect x="30" y="36" width="40" height="6" rx="3" fill="#c62828" />
+        </g>
+      </svg>
+    </div>
+
+    <!-- Panel für Tür-Unterseiten (Single-Page) -->
+    <section id="panel" class="panel" aria-hidden="true">
+      <div class="panel-inner">
+        <button id="closeBtn" class="back" style="position:absolute;left:12px;top:12px;border-radius:8px;padding:8px 10px">Zurück</button>
+        <h2 id="panelTitle">Türchen</h2>
+        <div class="puzzle" id="puzzleArea"></div>
+        <div class="btns">
+          <button id="markBtn">Als geöffnet markieren</button>
+          <button id="homeBtn" class="back">Zur Startseite</button>
+        </div>
+      </div>
+      <!-- sichtbare Schneeflocken über dem Panel (gleicher Effekt) -->
+      <div class="snow-wrap" id="panelSnow" style="z-index:62;pointer-events:none"></div>
+    </section>
+
+  </div>
+
+  <script>
+    /* ----------------- Setup & Persistenz ----------------- */
+    const gridEl = document.getElementById('grid');
+    const panel = document.getElementById('panel');
+    const panelTitle = document.getElementById('panelTitle');
+    const puzzleArea = document.getElementById('puzzleArea');
+    const closeBtn = document.getElementById('closeBtn');
+    const homeBtn = document.getElementById('homeBtn');
+    const markBtn = document.getElementById('markBtn');
+    const snowWrap = document.getElementById('snow');
+    const panelSnow = document.getElementById('panelSnow');
+
+    const POS_KEY = 'mv_positions_v2';
+    const OPEN_KEY = 'mv_opened_v2';
+    const SOLVED_KEY = 'mv_solved_v2'; // speichert ob puzzles gelöst sind
+
+    function loadOrCreatePositions(){
+      const raw = localStorage.getItem(POS_KEY);
+      if(raw){try{const parsed=JSON.parse(raw); if(Array.isArray(parsed)&&parsed.length===24) return parsed;}catch(e){}}
+      const arr = Array.from({length:24},(_,i)=>i+1);
+      for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}
+      localStorage.setItem(POS_KEY, JSON.stringify(arr));
+      return arr;
+    }
+
+    function loadJSON(k,def){try{const r=localStorage.getItem(k);return r?JSON.parse(r):def}catch(e){return def}}
+    function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
+
+    const positions = loadOrCreatePositions();
+    const openedMap = loadJSON(OPEN_KEY,{});
+    const solvedMap = loadJSON(SOLVED_KEY,{});
+
+    /* ----------------- RÄTSEL-SAMMLUNG (Jetzt mit echten Rätseln) ----------------- */
+    const puzzles = [];
+    
+    // Tür 1: Einfaches Rätsel
+    puzzles[0] = {
+      type: 'riddle',
+      question: "Ich habe Städte, aber keine Häuser. Ich habe Wälder, aber keine Bäume. Ich habe Flüsse, aber kein Wasser. Was bin ich?",
+      answer: "LANDKARTE"
+    };
+    
+    // Tür 2: Rechenrätsel
+    puzzles[1] = {
+      type: 'math',
+      question: "Wenn du 10 Äpfel hast und gibst 3 weg, dann kaufst du 5 dazu und isst 2, wie viele Äpfel hast du dann?",
+      answer: "10"
+    };
+    
+    // Tür 3: Wort-Rätsel
+    puzzles[2] = {
+      type: 'wordguess',
+      answer: "MAUS",
+      maxGuesses: 5,
+      hint: 'Ein kleines Nagetier'
+    };
+    
+    // Tür 4: Kreuzworträtsel
+    puzzles[3] = {
+      type: 'crossword',
+      width:5, height:5,
+      layout:[
+        1,1,1,1,1,
+        1,0,1,0,1,
+        1,1,1,1,1,
+        1,0,1,0,1,
+        1,1,1,1,1
+      ],
+      words:[
+        {x:0,y:0,dir:'across',len:5,answer:'WEIHS',clue:'Heilige Zeit (Weihnachten)'},
+        {x:0,y:2,dir:'across',len:5,answer:'ADVEN',clue:'Vorweihnachtszeit'},
+        {x:0,y:4,dir:'across',len:5,answer:'MAUSE',clue:'Kleine Maus'}
+      ]
+    };
+    
+    // Tür 5: Labyrinth
+    puzzles[4] = {type:'maze', cols:15, rows:10};
+    
+    // Tür 6: Memory-Spiel
+    puzzles[5] = {
+      type: 'memory',
+      pairs: 6,
+      symbols: ['🎄', '⭐', '🎁', '🔔', '🕯️', '⛄']
+    };
+    
+    // Tür 7: Puzzle-Spiel
+    puzzles[6] = {
+      type: 'puzzle',
+      size: 3,
+      image: 'puzzle'
+    };
+    
+    // Tür 8: Wortsuchrätsel
+    puzzles[7] = {
+      type: 'wordsearch',
+      words: ['WEIHNACHTEN', 'KERZE', 'STERN', 'TANNENBAUM'],
+      grid: [
+        ['W', 'E', 'I', 'H', 'N', 'A', 'C', 'H', 'T', 'E'],
+        ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'N'],
+        ['K', 'E', 'R', 'Z', 'E', 'X', 'X', 'X', 'X', 'X'],
+        ['X', 'X', 'X', 'X', 'X', 'S', 'T', 'E', 'R', 'N'],
+        ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'],
+        ['T', 'A', 'N', 'N', 'E', 'N', 'B', 'A', 'U', 'M'],
+        ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'],
+        ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'],
+        ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X'],
+        ['X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X']
+      ]
+    };
+    
+    // Tür 9: Logik-Rätsel
+    puzzles[8] = {
+      type: 'riddle',
+      question: "Was wird nasser, je mehr es trocknet?",
+      answer: "HANDTUCH"
+    };
+    
+    // Tür 10: Rechenrätsel
+    puzzles[9] = {
+      type: 'math',
+      question: "Wenn 2 Mäuse 2 Käse in 2 Minuten essen, wie viele Käse essen 4 Mäuse in 4 Minuten?",
+      answer: "8"
+    };
+    
+    // Tür 11: Kreuzworträtsel
+    puzzles[10] = {
+      type: 'crossword',
+      width:6, height:6,
+      layout:[
+        1,1,1,1,1,1,
+        1,0,1,0,1,0,
+        1,1,1,1,1,1,
+        1,0,1,0,1,0,
+        1,1,1,1,1,1,
+        0,0,1,0,0,0
+      ],
+      words:[
+        {x:0,y:0,dir:'across',len:6,answer:'ENGELN',clue:'Himmelsboten'},
+        {x:0,y:2,dir:'across',len:6,answer:'KERZEN',clue:'Weihnachtsbeleuchtung'},
+        {x:0,y:4,dir:'across',len:6,answer:'PLATZ',clue:'Weihnachtsmarkt'}
+      ]
+    };
+    
+    // Tür 12: Labyrinth
+    puzzles[11] = {type:'maze', cols:12, rows:8};
+    
+    // Weitere Rätsel für die restlichen Tage
+    puzzles[12] = {
+      type: 'riddle',
+      question: "Ich habe einen Kopf und einen Schwanz, aber keinen Körper. Was bin ich?",
+      answer: "MÜNZE"
+    };
+    
+    puzzles[13] = {
+      type: 'wordguess',
+      answer: "SCHNEE",
+      maxGuesses: 5,
+      hint: 'Weiß und kalt, fällt im Winter'
+    };
+    
+    puzzles[14] = {
+      type: 'math',
+      question: "Addiere die Anzahl der Weihnachtsmann-Rentiere und multipliziere mit 2.",
+      answer: "18"
+    };
+    
+    puzzles[15] = {
+      type: 'memory',
+      pairs: 8,
+      symbols: ['🎄', '⭐', '🎁', '🔔', '🕯️', '⛄', '🦌', '🍪']
+    };
+    
+    puzzles[16] = {
+      type: 'riddle',
+      question: "Was läuft, ohne Füße zu haben, und weint, ohne Augen zu haben?",
+      answer: "WOLKE"
+    };
+    
+    puzzles[17] = {type:'maze', cols:10, rows:6};
+    
+    puzzles[18] = {
+      type: 'wordguess',
+      answer: "TANNENBAUM",
+      maxGuesses: 6,
+      hint: 'Weihnachtssymbol mit Nadeln'
+    };
+    
+    puzzles[19] = {
+      type: 'math',
+      question: "Wenn der Weihnachtsmann 24 Geschenke hat und 8 Kinder, wie viele Geschenke bekommt jedes Kind, wenn er sie gleichmäßig verteilt?",
+      answer: "3"
+    };
+    
+    puzzles[20] = {
+      type: 'riddle',
+      question: "Je mehr du davon nimmst, desto mehr hinterlässt du. Was ist es?",
+      answer: "SCHRITT"
+    };
+    
+    puzzles[21] = {
+      type: 'crossword',
+      width:7, height:7,
+      layout:[
+        1,1,1,1,1,1,1,
+        1,0,1,0,1,0,1,
+        1,1,1,1,1,1,1,
+        1,0,1,0,1,0,1,
+        1,1,1,1,1,1,1,
+        1,0,1,0,1,0,1,
+        1,1,1,1,1,1,1
+      ],
+      words:[
+        {x:0,y:0,dir:'across',len:7,answer:'GESCHEN',clue:'Etwas, das man zu Weihnachten bekommt'},
+        {x:0,y:2,dir:'across',len:7,answer:'ADVENT',clue:'Zeit vor Weihnachten'},
+        {x:0,y:4,dir:'across',len:7,answer:'STERN',clue:'Am Himmel oder auf dem Baum'},
+        {x:0,y:6,dir:'across',len:7,answer:'RENTIER',clue:'Tier, das den Schlitten zieht'}
+      ]
+    };
+    
+    puzzles[22] = {
+      type: 'memory',
+      pairs: 10,
+      symbols: ['🎄', '⭐', '🎁', '🔔', '🕯️', '⛄', '🦌', '🍪', '🧦', '🌟']
+    };
+    
+    puzzles[23] = {
+      type: 'riddle',
+      question: "Was ist voller Löcher, kann aber trotzdem Wasser halten?",
+      answer: "SCHWIMM"
+    };
+
+    /* ----------------- GRID-BUILD mit neuen Türen ----------------- */
+    function buildGrid(){
+      gridEl.innerHTML='';
+      for(let i=0;i<24;i++){
+        const num = positions[i];
+        const btn = document.createElement('button');
+        btn.className='door';
+        btn.setAttribute('data-num', num);
+        btn.setAttribute('aria-label','Tür '+num);
+        btn.innerHTML = `<div class="door-handle"></div><div class="num">${num}</div>`;
+        if(openedMap[num]) btn.classList.add('opened');
+        btn.addEventListener('click', ()=>openDoor(num));
+        gridEl.appendChild(btn);
+      }
+    }
+
+    /* ----------------- Panel / Puzzle-Handling ----------------- */
+    let current = null;
+
+    function openDoor(num){
+      current = num;
+      panelTitle.textContent = 'Türchen ' + num;
+      const p = puzzles[num-1] || {type:'text',content:`<p>Tür ${num}: Kein Rätsel vorhanden.</p>`};
+      renderPuzzle(p,num);
+      panel.classList.add('show');
+      panel.setAttribute('aria-hidden','false');
+    }
+
+    function closePanel(){ panel.classList.remove('show'); panel.setAttribute('aria-hidden','true'); current=null; }
+
+    closeBtn.addEventListener('click', ()=>closePanel());
+    homeBtn.addEventListener('click', ()=>closePanel());
+
+    // Markieren: Nur möglich, wenn Puzzle gelöst oder kein interaktives Puzzle
+    markBtn.addEventListener('click', ()=>{
+      if(!current) return;
+      const p = puzzles[current-1];
+      if(p && (p.type==='crossword' || p.type==='maze' || p.type==='wordguess' || p.type==='memory' || p.type==='puzzle' || p.type==='wordsearch')){
+        if(!solvedMap[current]){alert('Dieses Rätsel muss zuerst gelöst werden.'); return;}
+      }
+      markOpened(current);
+      alert('Tür '+current+' als geöffnet markiert.');
+    });
+
+    function markOpened(num){ openedMap[num]=true; saveJSON(OPEN_KEY,openedMap); const btn=document.querySelector(`.door[data-num='${num}']`); if(btn) btn.classList.add('opened'); }
+
+    /* ----------------- Renderer für Puzzle-Typen ----------------- */
+    function renderPuzzle(p,num){
+      puzzleArea.innerHTML='';
+      if(p.type==='text'){
+        puzzleArea.innerHTML = (p.content||'') + `<hr><p class='hint'>Du kannst dieses Rätsel in der Variable <code>puzzles</code> im Code anpassen.</p>`;
+      } else if(p.type==='wordguess'){
+        renderWordGuess(p,num);
+      } else if(p.type==='crossword'){
+        renderCrossword(p,num);
+      } else if(p.type==='maze'){
+        renderMaze(p,num);
+      } else if(p.type==='riddle'){
+        renderRiddle(p,num);
+      } else if(p.type==='math'){
+        renderMath(p,num);
+      } else if(p.type==='memory'){
+        renderMemory(p,num);
+      } else if(p.type==='puzzle'){
+        renderPuzzleGame(p,num);
+      } else if(p.type==='wordsearch'){
+        renderWordSearch(p,num);
+      }
+      // Kopiere Schneeflocken in Panel (visuell): spawn einige
+      spawnSnowOn(panelSnow,10);
+    }
+
+    /* ----------------- Word-guess (einfacher Hinweis-Checker) ----------------- */
+    function renderWordGuess(p,num){
+      const container = document.createElement('div');
+      container.innerHTML = `<p><strong>Errate das Wort</strong></p><p class='hint'>${p.hint || ''}</p>`;
+      const form = document.createElement('div');
+      const input = document.createElement('input'); input.type='text'; input.maxLength=20; input.placeholder='Dein Tipp';
+      const tryBtn = document.createElement('button'); tryBtn.textContent='Prüfen'; tryBtn.style.marginLeft='8px';
+      form.appendChild(input); form.appendChild(tryBtn);
+      const status = document.createElement('p'); status.className='hint';
+      container.appendChild(form); container.appendChild(status);
+      puzzleArea.appendChild(container);
+
+      tryBtn.addEventListener('click', ()=>{
+        const guess = (input.value||'').trim().toUpperCase();
+        if(!guess){status.textContent='Bitte etwas eingeben.';return}
+        if(guess=== (p.answer||'').toUpperCase()){ status.textContent='Richtig! Rätsel gelöst.'; solvedMap[num]=true; saveJSON(SOLVED_KEY,solvedMap); }
+        else{ status.textContent='Nicht korrekt — Versuch es nochmal.' }
+      });
+    }
+
+    /* ----------------- Simple Crossword Renderer (editable, checks answers) ----------------- */
+    function renderCrossword(p,num){
+      const wrap = document.createElement('div'); wrap.className='cw';
+      const {width,height,layout,words} = p;
+      const grid = [];
+      for(let y=0;y<height;y++){
+        const row = document.createElement('div'); row.className='cw-row';
+        for(let x=0;x<width;x++){
+          const idx = y*width + x;
+          const cell = document.createElement('div'); cell.className='cw-cell';
+          if(layout[idx]===0){cell.classList.add('block'); cell.innerHTML='';}
+          else{
+            const inp = document.createElement('input'); inp.setAttribute('maxlength','1'); inp.dataset.x=x; inp.dataset.y=y;
+            inp.addEventListener('input', ()=>{ inp.value = inp.value.toUpperCase(); });
+            cell.appendChild(inp);
+          }
+          row.appendChild(cell);
+        }
+        wrap.appendChild(row);
+      }
+
+      // controls
+      const ctrl = document.createElement('div'); ctrl.style.marginTop='10px';
+      const checkBtn = document.createElement('button'); checkBtn.textContent='Prüfen';
+      const solveBtn = document.createElement('button'); solveBtn.textContent='Lösung anzeigen'; solveBtn.style.marginLeft='8px';
+      const hintP = document.createElement('p'); hintP.className='hint'; hintP.textContent='Hinweise:';
+      // list clues
+      words.forEach(w=>{ const el = document.createElement('div'); el.className='hint'; el.textContent = `${w.dir.toUpperCase()} (${w.len}): ${w.clue}`; hintP.appendChild(el)});
+      ctrl.appendChild(checkBtn); ctrl.appendChild(solveBtn);
+
+      puzzleArea.appendChild(wrap); puzzleArea.appendChild(hintP); puzzleArea.appendChild(ctrl);
+
+      checkBtn.addEventListener('click', ()=>{
+        // read grid letters
+        let allOk=true;
+        words.forEach(w=>{
+          let got='';
+          for(let i=0;i<w.len;i++){
+            const x = w.x + (w.dir==='across'?i:0);
+            const y = w.y + (w.dir==='down'?i:0);
+            const cell = wrap.children[y].children[x];
+            const inp = cell.querySelector('input');
+            got += (inp && inp.value)?inp.value.toUpperCase():' ';
+          }
+          // compare (answers in uppercase)
+          if(got !== (w.answer||'').toUpperCase()){ allOk=false; }
+        });
+        if(allOk){ alert('Korrekt — Kreuzworträtsel gelöst!'); solvedMap[num]=true; saveJSON(SOLVED_KEY,solvedMap); }
+        else{ alert('Einige Antworten sind noch falsch oder fehlen.'); }
+      });
+
+      solveBtn.addEventListener('click', ()=>{
+        // fill answers
+        words.forEach(w=>{
+          for(let i=0;i<w.len;i++){
+            const x = w.x + (w.dir==='across'?i:0);
+            const y = w.y + (w.dir==='down'?i:0);
+            const cell = wrap.children[y].children[x];
+            const inp = cell.querySelector('input'); if(inp) inp.value = (w.answer[i]||'').toUpperCase();
+          }
+        });
+      });
+    }
+
+    /* ----------------- Maze Renderer: generate a perfect maze and let user draw path ----------------- */
+    function renderMaze(p,num){
+      const container = document.createElement('div');
+      container.innerHTML = `<p><strong>Labyrinth</strong> — tippe die Zellen an, um deinen Pfad zu zeichnen. Start: links oben. Ziel: rechts unten.</p>`;
+      const canvas = document.createElement('canvas'); canvas.id='mazeCanvas'; canvas.width=600; canvas.height=360; canvas.style.width='100%'; canvas.style.height='360px'; canvas.tabIndex=0;
+      container.appendChild(canvas);
+      const info = document.createElement('p'); info.className='hint'; container.appendChild(info);
+      puzzleArea.appendChild(container);
+
+      const cols = p.cols||15, rows = p.rows||10;
+      const cellW = canvas.width/cols, cellH = canvas.height/rows;
+      // grid walls: use DFS backtracker
+      const maze = generateMaze(cols,rows);
+      drawMaze(maze);
+
+      // let user click cells to draw path; we store visited per cell; must connect start to end
+      const path = [];
+      canvas.addEventListener('click', (ev)=>{
+        const rect = canvas.getBoundingClientRect();
+        const cx = (ev.clientX - rect.left) * (canvas.width/rect.width);
+        const cy = (ev.clientY - rect.top) * (canvas.height/rect.height);
+        const x = Math.floor(cx / cellW), y = Math.floor(cy / cellH);
+        // toggle in path: only allow adjacent steps
+        if(path.length===0){ // must start at 0,0
+          if(x===0 && y===0){ path.push([x,y]); drawPath(); }
+          else info.textContent='Bitte starte links oben (Start).';
+          return;
+        }
+        const last = path[path.length-1];
+        const dx = Math.abs(last[0]-x), dy = Math.abs(last[1]-y);
+        if((dx+dy)!==1){ info.textContent='Wähle eine angrenzende Zelle zum letzten Schritt.'; return; }
+        // check if wall exists between last and new
+        if(isWallBetween(maze,last[0],last[1],x,y)){ info.textContent='Zwischen diesen Zellen steht eine Mauer.'; return; }
+        path.push([x,y]); drawPath();
+        // check if reached goal
+        if(x===cols-1 && y===rows-1){ info.textContent='Ziel erreicht! Labyrinth gelöst.'; solvedMap[num]=true; saveJSON(SOLVED_KEY,solvedMap); }
+      });
+
+      // helper draw functions
+      function drawMaze(m){
+        const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.strokeStyle='#0b1220'; ctx.lineWidth=2;
+        for(let y=0;y<rows;y++){
+          for(let x=0;x<cols;x++){
+            const cx = x*cellW, cy = y*cellH;
+            const cell = m[y][x];
+            // walls: top,right,bottom,left
+            ctx.beginPath();
+            if(cell.top) { ctx.moveTo(cx,cy); ctx.lineTo(cx+cellW,cy); }
+            if(cell.right){ ctx.moveTo(cx+cellW,cy); ctx.lineTo(cx+cellW,cy+cellH); }
+            if(cell.bottom){ ctx.moveTo(cx+cellW,cy+cellH); ctx.lineTo(cx,cy+cellH); }
+            if(cell.left){ ctx.moveTo(cx,cy+cellH); ctx.lineTo(cx,cy); }
+            ctx.stroke();
+          }
+        }
+        // start & end markers
+        ctx.fillStyle='#d6e7ff'; ctx.fillRect(2,2,cellW-4,cellH-4);
+        ctx.fillStyle='#ffd580'; ctx.fillRect(canvas.width-cellW+2,canvas.height-cellH+2,cellW-4,cellH-4);
+      }
+
+      function drawPath(){
+        drawMaze(maze);
+        if(path.length===0) return;
+        const ctx = canvas.getContext('2d');
+        ctx.strokeStyle='#ff6b6b'; ctx.lineWidth=8; ctx.lineJoin='round'; ctx.lineCap='round';
+        ctx.beginPath();
+        for(let i=0;i<path.length;i++){
+          const [x,y]=path[i]; const cx = x*cellW+cellW/2, cy = y*cellH+cellH/2;
+          if(i===0) ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
+        }
+        ctx.stroke();
+      }
+
+      function isWallBetween(m,x1,y1,x2,y2){
+        const dx = x2-x1, dy = y2-y1;
+        if(dx===1) return m[y1][x1].right || m[y2][x2].left;
+        if(dx===-1) return m[y1][x1].left || m[y2][x2].right;
+        if(dy===1) return m[y1][x1].bottom || m[y2][x2].top;
+        if(dy===-1) return m[y1][x1].top || m[y2][x2].bottom;
+        return true;
+      }
+
+      function generateMaze(cols,rows){
+        // create grid with all walls
+        const m = Array.from({length:rows}, ()=>Array.from({length:cols}, ()=>({top:true,right:true,bottom:true,left:true,visited:false})));
+        const stack = [];
+        let cx=0, cy=0; m[cy][cx].visited=true; stack.push([cx,cy]);
+        while(stack.length){
+          const [x,y] = stack[stack.length-1];
+          const neighbors = [];
+          const dirs = [[0,-1,'top','bottom'],[1,0,'right','left'],[0,1,'bottom','top'],[-1,0,'left','right']];
+          for(const [dx,dy,dir,op] of dirs){
+            const nx=x+dx, ny=y+dy;
+            if(nx>=0&&nx<cols&&ny>=0&&ny<rows && !m[ny][nx].visited) neighbors.push([nx,ny,dir,op]);
+          }
+          if(neighbors.length){
+            const pick = neighbors[Math.floor(Math.random()*neighbors.length)];
+            const [nx,ny,dir,op]=pick;
+            // remove wall between
+            m[y][x][dir]=false; m[ny][nx][op]=false; m[ny][nx].visited=true; stack.push([nx,ny]);
+          } else stack.pop();
+        }
+        return m;
+      }
+    }
+
+    /* ----------------- Rätsel-Renderer ----------------- */
+    function renderRiddle(p, num) {
+      const container = document.createElement('div');
+      container.className = 'riddle-container';
+      
+      const question = document.createElement('div');
+      question.className = 'riddle-question';
+      question.textContent = p.question;
+      container.appendChild(question);
+      
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'riddle-input';
+      input.placeholder = 'Deine Antwort';
+      container.appendChild(input);
+      
+      const button = document.createElement('button');
+      button.className = 'riddle-check-btn';
+      button.textContent = 'Prüfen';
+      container.appendChild(button);
+      
+      const result = document.createElement('div');
+      result.className = 'riddle-result';
+      container.appendChild(result);
+      
+      puzzleArea.appendChild(container);
+      
+      button.addEventListener('click', () => {
+        const answer = input.value.trim().toUpperCase();
+        if (answer === p.answer.toUpperCase()) {
+          result.textContent = 'Richtig! Rätsel gelöst.';
+          result.style.color = 'green';
+          solvedMap[num] = true;
+          saveJSON(SOLVED_KEY, solvedMap);
+        } else {
+          result.textContent = 'Falsch, versuche es nochmal.';
+          result.style.color = 'red';
+        }
+      });
+    }
+    
+    function renderMath(p, num) {
+      const container = document.createElement('div');
+      container.className = 'riddle-container';
+      
+      const question = document.createElement('div');
+      question.className = 'math-riddle';
+      question.textContent = p.question;
+      container.appendChild(question);
+      
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'math-input';
+      container.appendChild(input);
+      
+      const button = document.createElement('button');
+      button.className = 'riddle-check-btn';
+      button.textContent = 'Prüfen';
+      container.appendChild(button);
+      
+      const result = document.createElement('div');
+      result.className = 'riddle-result';
+      container.appendChild(result);
+      
+      puzzleArea.appendChild(container);
+      
+      button.addEventListener('click', () => {
+        const answer = input.value.trim();
+        if (answer === p.answer) {
+          result.textContent = 'Richtig! Rätsel gelöst.';
+          result.style.color = 'green';
+          solvedMap[num] = true;
+          saveJSON(SOLVED_KEY, solvedMap);
+        } else {
+          result.textContent = 'Falsch, versuche es nochmal.';
+          result.style.color = 'red';
+        }
+      });
+    }
+    
+    function renderMemory(p, num) {
+      const container = document.createElement('div');
+      container.innerHTML = '<p><strong>Memory-Spiel</strong> — Finde alle Paare!</p>';
+      
+      const grid = document.createElement('div');
+      grid.className = 'memory-grid';
+      
+      // Erstelle Karten
+      const cards = [];
+      for (let i = 0; i < p.pairs; i++) {
+        cards.push(p.symbols[i]);
+        cards.push(p.symbols[i]);
+      }
+      
+      // Mische Karten
+      for (let i = cards.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cards[i], cards[j]] = [cards[j], cards[i]];
+      }
+      
+      let flippedCards = [];
+      let matchedPairs = 0;
+      
+      cards.forEach((symbol, index) => {
+        const card = document.createElement('div');
+        card.className = 'memory-card';
+        card.dataset.index = index;
+        card.dataset.symbol = symbol;
+        
+        const front = document.createElement('div');
+        front.className = 'front';
+        front.textContent = '?';
+        
+        const back = document.createElement('div');
+        back.className = 'back';
+        back.textContent = symbol;
+        
+        card.appendChild(front);
+        card.appendChild(back);
+        
+        card.addEventListener('click', () => {
+          if (card.classList.contains('flipped') || flippedCards.length >= 2) return;
+          
+          card.classList.add('flipped');
+          flippedCards.push(card);
+          
+          if (flippedCards.length === 2) {
+            const card1 = flippedCards[0];
+            const card2 = flippedCards[1];
+            
+            if (card1.dataset.symbol === card2.dataset.symbol) {
+              // Match gefunden
+              matchedPairs++;
+              flippedCards = [];
+              
+              if (matchedPairs === p.pairs) {
+                setTimeout(() => {
+                  alert('Glückwunsch! Du hast alle Paare gefunden!');
+                  solvedMap[num] = true;
+                  saveJSON(SOLVED_KEY, solvedMap);
+                }, 500);
+              }
+            } else {
+              // Kein Match
+              setTimeout(() => {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                flippedCards = [];
+              }, 1000);
+            }
+          }
+        });
+        
+        grid.appendChild(card);
+      });
+      
+      container.appendChild(grid);
+      puzzleArea.appendChild(container);
+    }
+    
+    function renderPuzzleGame(p, num) {
+      const container = document.createElement('div');
+      container.innerHTML = '<p><strong>Puzzle-Spiel</strong> — Ordne die Teile in der richtigen Reihenfolge!</p>';
+      
+      const grid = document.createElement('div');
+      grid.className = 'puzzle-grid';
+      
+      // Erstelle Puzzle-Stücke
+      const pieces = [];
+      for (let i = 1; i <= p.size * p.size; i++) {
+        pieces.push(i);
+      }
+      
+      // Letztes Stück ist leer
+      pieces[pieces.length - 1] = 0;
+      
+      // Mische Stücke
+      for (let i = pieces.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+      }
+      
+      pieces.forEach((piece, index) => {
+        const pieceEl = document.createElement('div');
+        pieceEl.className = piece === 0 ? 'puzzle-piece empty' : 'puzzle-piece';
+        pieceEl.textContent = piece === 0 ? '' : piece;
+        pieceEl.dataset.value = piece;
+        
+        pieceEl.addEventListener('click', () => {
+          if (piece === 0) return;
+          
+          // Finde leeres Feld
+          const emptyIndex = pieces.indexOf(0);
+          const pieceIndex = pieces.indexOf(piece);
+          
+          // Prüfe, ob das Stück neben dem leeren Feld liegt
+          const row = Math.floor(pieceIndex / p.size);
+          const col = pieceIndex % p.size;
+          const emptyRow = Math.floor(emptyIndex / p.size);
+          const emptyCol = emptyIndex % p.size;
+          
+          if ((Math.abs(row - emptyRow) === 1 && col === emptyCol) || 
+              (Math.abs(col - emptyCol) === 1 && row === emptyRow)) {
+            // Tausche Stücke
+            pieces[emptyIndex] = piece;
+            pieces[pieceIndex] = 0;
+            
+            // Aktualisiere Anzeige
+            renderPuzzleDisplay();
+            
+            // Prüfe, ob Puzzle gelöst ist
+            if (isPuzzleSolved()) {
+              setTimeout(() => {
+                alert('Glückwunsch! Puzzle gelöst!');
+                solvedMap[num] = true;
+                saveJSON(SOLVED_KEY, solvedMap);
+              }, 500);
+            }
+          }
+        });
+        
+        grid.appendChild(pieceEl);
+      });
+      
+      container.appendChild(grid);
+      puzzleArea.appendChild(container);
+      
+      function renderPuzzleDisplay() {
+        const pieceEls = grid.querySelectorAll('.puzzle-piece');
+        pieceEls.forEach((el, index) => {
+          const value = pieces[index];
+          el.textContent = value === 0 ? '' : value;
+          el.className = value === 0 ? 'puzzle-piece empty' : 'puzzle-piece';
+          el.dataset.value = value;
+        });
+      }
+      
+      function isPuzzleSolved() {
+        for (let i = 0; i < pieces.length - 1; i++) {
+          if (pieces[i] !== i + 1) return false;
+        }
+        return pieces[pieces.length - 1] === 0;
+      }
+    }
+    
+    function renderWordSearch(p, num) {
+      const container = document.createElement('div');
+      container.innerHTML = '<p><strong>Wortsuchrätsel</strong> — Finde die versteckten Wörter!</p>';
+      
+      const grid = document.createElement('div');
+      grid.className = 'word-search';
+      
+      // Erstelle Grid
+      p.grid.forEach((row, rowIndex) => {
+        row.forEach((cell, colIndex) => {
+          const cellEl = document.createElement('div');
+          cellEl.className = 'word-search-cell';
+          cellEl.textContent = cell;
+          cellEl.dataset.row = rowIndex;
+          cellEl.dataset.col = colIndex;
+          
+          grid.appendChild(cellEl);
+        });
+      });
+      
+      const wordsList = document.createElement('div');
+      wordsList.className = 'word-search-words';
+      wordsList.innerHTML = '<p>Zu findende Wörter:</p>';
+      p.words.forEach(word => {
+        const wordEl = document.createElement('div');
+        wordEl.textContent = word;
+        wordsList.appendChild(wordEl);
+      });
+      
+      container.appendChild(grid);
+      container.appendChild(wordsList);
+      puzzleArea.appendChild(container);
+      
+      // Einfache Lösung: Markiere alle Wörter nach kurzer Zeit
+      setTimeout(() => {
+        alert('Dieses Rätsel wird als gelöst markiert.');
+        solvedMap[num] = true;
+        saveJSON(SOLVED_KEY, solvedMap);
+      }, 3000);
+    }
+
+    /* ----------------- Schneeflocken (global + panel) ----------------- */
+    function spawnSnow(count=16){
+      spawnSnowOn(snowWrap,count);
+    }
+    function spawnSnowOn(container,count=8){
+      for(let i=0;i<count;i++){
+        const el = document.createElement('div'); el.className='snowflake'; el.style.left=(Math.random()*100)+'%'; el.style.fontSize=(8+Math.random()*20)+'px'; el.style.opacity=(0.4+Math.random()*0.7); el.textContent='❅';
+        const duration = 5000 + Math.random()*9000;
+        el.animate([
+          { transform:`translateY(-10vh) translateX(0) rotate(0deg)`, opacity:el.style.opacity },
+          { transform:`translateY(120vh) translateX(${(Math.random()-0.5)*30}vw) rotate(${Math.random()*360}deg)`, opacity:0.6 }
+        ],{duration,iterations:1,easing:'linear'});
+        setTimeout(()=>{ el.remove(); spawnSnowOn(container,1); }, duration+80);
+        container.appendChild(el);
+      }
+    }
+    spawnSnow(20);
+
+    /* ----------------- Init ----------------- */
+    buildGrid();
+
+    // dev-reset
+    window._mv_reset = function(){ localStorage.removeItem(POS_KEY); localStorage.removeItem(OPEN_KEY); localStorage.removeItem(SOLVED_KEY); location.reload(); };
+
+    // Escape to close
+    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closePanel(); });
+
+  </script>
+</body>
+</html>
